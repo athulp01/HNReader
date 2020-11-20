@@ -1,55 +1,65 @@
 import 'package:flutter/material.dart';
 import 'comment.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class HNStory {
-  HNStory(this.headline, this.author, this.votes, this.comments);
-  String headline, author;
-  int votes, comments;
+  HNStory(this.headline, this.author, this.votes, this.comments, this.time,
+      this.url, this.childrenID);
+  String headline, author, url;
+  int votes, comments, id, score, time;
+  List<dynamic> childrenID;
+  List<HNComment> children;
 }
 
-class HNCard extends StatefulWidget {
-  HNStory story;
-  Function checkUpdates;
-  int index;
-  HNCard(this.story, this.index, this.checkUpdates);
-  @override
-  HNCardState createState() => HNCardState(story, index, checkUpdates);
-}
+class HNCard extends StatelessWidget {
+  HNCard(this.story);
+  final HNStory story;
+  CommentPage page;
+  Duration before;
+  bool commentSet = false;
 
-class HNCardState extends State<HNCard> {
-  HNCardState(this.story, this.index, this.checkUpdates);
-  Function checkUpdates;
-  HNStory story;
-  int index;
-
-  void updateState(HNStory stor) {
-    setState(() {
-      this.story.headline = stor.headline;
-      this.story.votes = stor.votes;
-    });
+  Future<Map<String, dynamic>> fetchItem(int item) async {
+    final response =
+        await http.get('https://hacker-news.firebaseio.com/v0/item/$item.json');
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed');
+    }
   }
 
   Widget makeCard(BuildContext context) {
+    before = DateTime.now()
+        .difference(DateTime.fromMillisecondsSinceEpoch(story.time * 1000));
+    String timeString = "${before.inHours} hours ago (${story.url}";
+    if (before.inHours < 1) {
+      timeString = "${before.inMinutes} minutes ago";
+    }
     return Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment(
-                0.8, 0.0), // 10% of the width, so there are ten blinds.
-            colors: [
-              const Color(0xffff6600),
-              const Color(0xffee0000),
-            ], // red to yellow
-          ),
-        ),
+        decoration: BoxDecoration(color: Colors.grey[200]),
         child: Card(
-            margin: EdgeInsets.all(1),
+            margin: EdgeInsets.all(2),
             elevation: 10,
             color: Colors.white,
             child: InkWell(
                 onTap: () {
-                  Navigator.push(context,
-                      MaterialPageRoute(builder: (context) => HNComment()));
+                  if (!commentSet && story.childrenID != null) {
+                    story.children = List(story.childrenID.length);
+                    for (var i = 0; i < story.childrenID.length; i++) {
+                      story.children[i] = new HNComment(story.childrenID[i], 0);
+                    }
+                    commentSet = true;
+                    page = CommentPage(story);
+                  }
+
+                  Navigator.push(
+                      context,
+                      PageRouteBuilder(
+                          pageBuilder: (context, a1, a2) => page,
+                          transitionsBuilder: (c, anim, a2, child) =>
+                              FadeTransition(opacity: anim, child: child),
+                          transitionDuration: Duration(milliseconds: 300)));
                 },
                 child: Column(children: [
                   ListTile(
@@ -60,10 +70,8 @@ class HNCardState extends State<HNCard> {
                             color: Colors.black,
                             fontFamily: "Helvetica"),
                       ),
-                      subtitle: Text(this.story.author)),
+                      subtitle: Text("$timeString by ${this.story.author}")),
                   Row(
-                    mainAxisSize: MainAxisSize.max,
-                    mainAxisAlignment: MainAxisAlignment.start,
                     children: [
                       Container(
                           width: 90,
@@ -73,10 +81,7 @@ class HNCardState extends State<HNCard> {
                                   Icons.arrow_upward_rounded,
                                   color: Colors.redAccent[400],
                                 ),
-                                onPressed: () {
-                                  HNStory updated = checkUpdates(index);
-                                  updateState(updated);
-                                }),
+                                onPressed: null),
                             Text('${this.story.votes}',
                                 style: TextStyle(fontWeight: FontWeight.w600)),
                           ])),
@@ -88,10 +93,7 @@ class HNCardState extends State<HNCard> {
                                   Icons.comment,
                                   color: Colors.green,
                                 ),
-                                onPressed: () {
-                                  HNStory updated = checkUpdates(index);
-                                  updateState(updated);
-                                }),
+                                onPressed: null),
                             Text('${this.story.comments}',
                                 style: TextStyle(fontWeight: FontWeight.w600))
                           ])),

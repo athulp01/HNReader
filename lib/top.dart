@@ -9,12 +9,14 @@ class HNTopState extends State<HNTop> {
   List<HNCard> cards;
   List<HNStory> stories;
 
+  HNCard loading = new HNCard(new HNStory('...', '...', 0, 0, 0, "", null));
+
   @override
   void initState() {
     super.initState();
     itemIDs = fetchTopItems();
-    cards = new List(20);
-    stories = new List(20);
+    cards = new List(200);
+    stories = new List(200);
   }
 
   Future<Map<String, dynamic>> fetchItem(int item) async {
@@ -37,11 +39,6 @@ class HNTopState extends State<HNTop> {
     }
   }
 
-  HNStory checkForUpdate(int index) {
-    stories[index].votes++;
-    return stories[index];
-  }
-
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<dynamic>>(
@@ -49,6 +46,7 @@ class HNTopState extends State<HNTop> {
         builder: (contex, snap) {
           if (snap.hasData) {
             return new ListView.builder(
+                physics: const BouncingScrollPhysics(),
                 itemBuilder: (BuildContext context, int index) {
                   if (cards[index] != null) {
                     return cards[index];
@@ -62,21 +60,21 @@ class HNTopState extends State<HNTop> {
                                 snapshot.data['title'],
                                 snapshot.data['by'],
                                 snapshot.data['score'],
-                                snapshot.data['descendants']);
-                            cards[index] = new HNCard(
-                                stories[index], index, checkForUpdate);
+                                snapshot.data['descendants'],
+                                snapshot.data['time'],
+                                snapshot.data['url'],
+                                snapshot.data['kids']);
+                            cards[index] = new HNCard(stories[index]);
                             return cards[index];
                           } else if (snapshot.hasError) {
                             return Text("${snapshot.error}");
                           }
                           return Card(
-                              elevation: 10,
-                              child:
-                                  Center(child: CircularProgressIndicator()));
+                              elevation: 10, child: Center(child: loading));
                         });
                   }
                 },
-                itemCount: 20);
+                itemCount: 200);
           } else if (snap.hasError) {
             return Text("${snap.error}");
           }
