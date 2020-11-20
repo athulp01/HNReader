@@ -1,13 +1,11 @@
 import 'dart:collection';
 
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 import 'card.dart';
-import 'package:flutter/foundation.dart';
 import 'api.dart';
 import 'dart:async';
+import 'webview.dart';
 
 class HNComment {
   HNComment(this.id, this.left);
@@ -24,16 +22,26 @@ class CommentPage extends StatelessWidget {
   StreamController<Widget> _controller = StreamController<Widget>.broadcast();
 
   CommentPage(this.story) {
-    WebView.platform = SurfaceAndroidWebView();
     cards = new List();
     getComments();
   }
 
-  Widget makeCard(String text, double left) {
+  Widget makeCard(String text, String by, int time, double left) {
+    var before = DateTime.now()
+        .difference(DateTime.fromMillisecondsSinceEpoch(story.time * 1000));
+    String timeString = "${before.inHours} hours";
+    if (before.inHours < 1) {
+      timeString = "${before.inMinutes} minutes";
+    }
     return Container(
       decoration: BoxDecoration(color: Colors.grey[200]),
       margin: EdgeInsets.only(left: left),
-      child: Card(child: ListTile(dense: true, title: Html(data: text))),
+      child: Card(
+          child: ListTile(
+        dense: true,
+        title: Html(data: text),
+        subtitle: Text("by $by $timeString ago"),
+      )),
     );
   }
 
@@ -46,11 +54,12 @@ class CommentPage extends StatelessWidget {
         HNComment top = stack.last;
         stack.removeLast();
         var res = await top.future;
-        _controller.add(makeCard(res["text"] ?? "deleted", top.left));
+        _controller.add(makeCard(
+            res["text"] ?? "deleted", res["by"] ?? "?", res['time'], top.left));
         if (res['kids'] != null) {
           top.children = new List(res["kids"].length);
           for (int i = 0; i < res["kids"].length; i++) {
-            top.children[i] = new HNComment(res["kids"][i], top.left + 10);
+            top.children[i] = new HNComment(res["kids"][i], top.left + 12);
             top.children[i].future = HNAPI.fetchItem(top.children[i].id);
             stack.addLast(top.children[i]);
           }
@@ -68,39 +77,36 @@ class CommentPage extends StatelessWidget {
             title: Text("${story.headline}"),
             backgroundColor: Color(0xffff6600),
             bottom: TabBar(tabs: [
+              Tab(text: "Website"),
               Tab(text: "Comments"),
-              Tab(text: "Url"),
             ]),
           ),
           body: Center(
               child: TabBarView(children: [
-            StreamBuilder(
-                stream: _controller.stream,
-                builder: (context, snapshot) {
-                  if (snapshot.hasData) {
-                    cards.add(snapshot.data);
-                    return ListView.builder(
-                        itemBuilder: (context, index) {
-                          return cards[index];
-                        },
-                        itemCount: cards.length);
-                  } else if (snapshot.connectionState == ConnectionState.done ||
-                      snapshot.connectionState == ConnectionState.waiting) {
-                    return ListView.builder(
-                        itemBuilder: (context, index) {
-                          return cards[index];
-                        },
-                        itemCount: cards.length);
-                  }
-                  return Text("...");
-                }),
-            WebView(
-              gestureRecognizers: [
-                Factory<VerticalDragGestureRecognizer>(
-                    () => VerticalDragGestureRecognizer())
-              ].toSet(),
-              initialUrl: story.url,
-            )
+            Container(
+                decoration: BoxDecoration(color: Colors.grey[200]),
+                child: StreamBuilder(
+                    stream: _controller.stream,
+                    builder: (context, snapshot) {
+                      if (snapshot.hasData) {
+                        cards.add(snapshot.data);
+                        return ListView.builder(
+                            itemBuilder: (context, index) {
+                              return cards[index];
+                            },
+                            itemCount: cards.length);
+                      } else if (snapshot.connectionState ==
+                              ConnectionState.done ||
+                          snapshot.connectionState == ConnectionState.waiting) {
+                        return ListView.builder(
+                            itemBuilder: (context, index) {
+                              return cards[index];
+                            },
+                            itemCount: cards.length);
+                      }
+                      return Text("...");
+                    })),
+            WebViewScreen(story.url),
           ])),
         ));
   }
