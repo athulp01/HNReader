@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'comment.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 
 class HNStory {
   HNStory(this.headline, this.author, this.votes, this.comments, this.time,
@@ -13,24 +11,13 @@ class HNStory {
 }
 
 class HNCard extends StatelessWidget {
-  HNCard(this.story);
   final HNStory story;
-  CommentPage page;
-  Duration before;
-  bool commentSet = false;
+  HNCard(this.story);
 
-  Future<Map<String, dynamic>> fetchItem(int item) async {
-    final response =
-        await http.get('https://hacker-news.firebaseio.com/v0/item/$item.json');
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Failed');
-    }
-  }
+  CommentPage page;
 
   Widget makeCard(BuildContext context) {
-    before = DateTime.now()
+    var before = DateTime.now()
         .difference(DateTime.fromMillisecondsSinceEpoch(story.time * 1000));
     String timeString = "${before.inHours} hours ago (${story.url}";
     if (before.inHours < 1) {
@@ -44,12 +31,11 @@ class HNCard extends StatelessWidget {
             color: Colors.white,
             child: InkWell(
                 onTap: () {
-                  if (!commentSet && story.childrenID != null) {
+                  if (page == null && story.childrenID != null) {
                     story.children = List(story.childrenID.length);
                     for (var i = 0; i < story.childrenID.length; i++) {
                       story.children[i] = new HNComment(story.childrenID[i], 0);
                     }
-                    commentSet = true;
                     page = CommentPage(story);
                   }
 

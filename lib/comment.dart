@@ -6,8 +6,7 @@ import 'package:flutter_html/flutter_html.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'card.dart';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'api.dart';
 
 class HNComment {
   HNComment(this.id, this.left);
@@ -19,18 +18,15 @@ class HNComment {
 }
 
 class HNCommentCard extends StatelessWidget {
-  HNComment comment;
+  final HNComment comment;
   List<Widget> wid;
   Future<List<Widget>> future;
-  Stopwatch watch;
 
   HNCommentCard(this.comment) {
     future = getComments();
   }
 
   Future<List<Widget>> getComments() async {
-    print("called");
-    watch = new Stopwatch()..start();
     List<Widget> cards = new List();
     double left = 10;
     ListQueue<HNComment> stack = new ListQueue();
@@ -38,7 +34,7 @@ class HNCommentCard extends StatelessWidget {
     while (stack.isNotEmpty) {
       HNComment top = stack.last;
       stack.removeLast();
-      var res = await fetchItem(top.id);
+      var res = await HNAPI.fetchItem(top.id);
       cards.add(makeCard(res["text"] ?? "deleted", top.left));
       if (res['kids'] != null) {
         for (int i = 0; i < res["kids"].length; i++) {
@@ -48,16 +44,6 @@ class HNCommentCard extends StatelessWidget {
       left += 10;
     }
     return cards;
-  }
-
-  Future<Map<String, dynamic>> fetchItem(int item) async {
-    final response =
-        await http.get('https://hacker-news.firebaseio.com/v0/item/$item.json');
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Failed');
-    }
   }
 
   Widget makeCard(String text, double left) {
