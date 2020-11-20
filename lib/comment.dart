@@ -23,25 +23,28 @@ class HNCommentCard extends StatelessWidget {
   Future<List<Widget>> future;
 
   HNCommentCard(this.comment) {
+    comment.future = HNAPI.fetchItem(comment.id);
     future = getComments();
   }
 
   Future<List<Widget>> getComments() async {
     List<Widget> cards = new List();
-    double left = 10;
     ListQueue<HNComment> stack = new ListQueue();
     stack.addLast(comment);
     while (stack.isNotEmpty) {
       HNComment top = stack.last;
       stack.removeLast();
-      var res = await HNAPI.fetchItem(top.id);
+      var res = await top.future;
       cards.add(makeCard(res["text"] ?? "deleted", top.left));
       if (res['kids'] != null) {
+        top.children = new List(res["kids"].length);
         for (int i = 0; i < res["kids"].length; i++) {
-          stack.addLast(HNComment(res["kids"][i], left));
+          top.children[i] = new HNComment(res["kids"][i], top.left+10);
+          top.children[i].future = HNAPI.fetchItem(top.children[i].id);
+          stack.addLast(top.children[i]);
+
         }
       }
-      left += 10;
     }
     return cards;
   }
@@ -59,7 +62,7 @@ class HNCommentCard extends StatelessWidget {
         builder: (context, snapshot) {
           if (snapshot.hasData) {
             if (wid == null) wid = snapshot.data;
-            return Column(children: snapshot.data);
+            return SingleChildScrollView(child:Column(children: snapshot.data));
           } else {
             return Card(child: Center(child: Text("...")));
           }
