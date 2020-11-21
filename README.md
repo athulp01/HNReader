@@ -10,5 +10,5 @@ Mobile app for reading top page of HackerNews.
 Home Page                  |  Comments
 :-------------------------:|:-------------------------:
 ![](screenshots/home.jpeg) |  ![](screenshots/comments.jpeg)
-:-------------------------:|:-------------------------:
+Website
 ![](screenshots/website.jpeg)
