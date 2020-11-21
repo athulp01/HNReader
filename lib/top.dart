@@ -6,9 +6,10 @@ class HNTopState extends State<HNTop> {
   Future<Map<String, dynamic>> items;
   Future<List<dynamic>> itemIDs;
   List<HNCard> cards;
-  List<HNStory> stories;
+  List<HNItem> stories;
 
-  HNCard loading = new HNCard(new HNStory('...', '...', 0, 0, 0, "", null));
+  HNCard loading =
+      new HNCard(new HNItem('...', '...', 0, 0, 0, "", "story", null));
 
   @override
   void initState() {
@@ -35,13 +36,14 @@ class HNTopState extends State<HNTop> {
                         future: item,
                         builder: (context, snapshot) {
                           if (snapshot.hasData) {
-                            stories[index] = HNStory(
+                            stories[index] = HNItem(
                                 snapshot.data['title'],
                                 snapshot.data['by'],
                                 snapshot.data['score'],
                                 snapshot.data['descendants'],
                                 snapshot.data['time'],
                                 snapshot.data['url'],
+                                snapshot.data["type"],
                                 snapshot.data['kids']);
                             cards[index] = new HNCard(stories[index]);
                             return cards[index];

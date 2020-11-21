@@ -1,25 +1,27 @@
 import 'package:flutter/material.dart';
 import 'comment.dart';
+import 'webview.dart';
 
-class HNStory {
-  HNStory(this.headline, this.author, this.votes, this.comments, this.time,
-      this.url, this.childrenID);
-  String headline, author, url;
+class HNItem {
+  HNItem(this.headline, this.author, this.votes, this.comments, this.time,
+      this.url, this.type, this.childrenID);
+  String headline, author, url, type;
   int votes, comments, id, score, time;
   List<dynamic> childrenID;
   List<HNComment> children;
 }
 
 class HNCard extends StatelessWidget {
-  final HNStory story;
+  final HNItem story;
+
   HNCard(this.story);
 
-  CommentPage page;
+  Widget page;
 
   Widget makeCard(BuildContext context) {
     var before = DateTime.now()
         .difference(DateTime.fromMillisecondsSinceEpoch(story.time * 1000));
-    String timeString = "${before.inHours} hours ago (${story.url}";
+    String timeString = "${before.inHours} hours ago";
     if (before.inHours < 1) {
       timeString = "${before.inMinutes} minutes ago";
     }
@@ -31,6 +33,16 @@ class HNCard extends StatelessWidget {
             color: Colors.white,
             child: InkWell(
                 onTap: () {
+                  if (story.type == "job")
+                    page = Scaffold(
+                        appBar: AppBar(
+                            title: Text(
+                              story.headline,
+                            ),
+                            backgroundColor: Color(0xffff6600)),
+                        body: Center(
+                          child: WebViewScreen(story.url),
+                        ));
                   if (page == null && story.childrenID != null) {
                     story.children = List(story.childrenID.length);
                     for (var i = 0; i < story.childrenID.length; i++) {
@@ -56,7 +68,8 @@ class HNCard extends StatelessWidget {
                             color: Colors.black,
                             fontFamily: "Helvetica"),
                       ),
-                      subtitle: Text("$timeString by ${this.story.author}")),
+                      subtitle: Text(
+                          "$timeString by ${this.story.author} (${story.url})")),
                   Row(
                     children: [
                       Container(
@@ -80,7 +93,7 @@ class HNCard extends StatelessWidget {
                                   color: Colors.green,
                                 ),
                                 onPressed: null),
-                            Text('${this.story.comments}',
+                            Text('${this.story.comments ?? 0}',
                                 style: TextStyle(fontWeight: FontWeight.w600))
                           ])),
                     ],

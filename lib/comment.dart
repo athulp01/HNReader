@@ -16,27 +16,31 @@ class HNComment {
 }
 
 class CommentPage extends StatefulWidget {
-  final HNStory _story;
+  final HNItem story;
+  List<Widget> cards;
+  int counter = 0;
 
-  CommentPage(this._story);
+  CommentPage(this.story) {
+    cards = new List(story.comments);
+  }
 
-  CommentPageState createState() => CommentPageState(_story);
+  @override
+  CommentPageState createState() => new CommentPageState(story);
 }
 
 class CommentPageState extends State<CommentPage> {
-  final HNStory _story;
-  List<Widget> _cards;
+  final HNItem _story;
 
-  CommentPageState(this._story) {
-    _cards = new List(_story.comments);
-    getComments();
-  }
+  CommentPageState(this._story);
 
   void initState() {
     super.initState();
-    var loading = _makeCard("...", "...", 0, 0);
-    for (int i = 0; i < _story.comments; i++) {
-      _cards[i] = loading;
+    if (widget.counter == 0) {
+      getComments();
+      var loading = _makeCard("...", "...", 0, 0);
+      for (int i = 0; i < _story.comments; i++) {
+        widget.cards[i] = loading;
+      }
     }
   }
 
@@ -60,7 +64,6 @@ class CommentPageState extends State<CommentPage> {
   }
 
   void getComments() async {
-    int j = 0;
     for (var comment in _story.children) {
       comment.future = HNAPI.fetchItem(comment.id);
       ListQueue<HNComment> stack = new ListQueue();
@@ -69,13 +72,21 @@ class CommentPageState extends State<CommentPage> {
         HNComment top = stack.last;
         stack.removeLast();
         var res = await top.future;
-        setState(() {
-          if (j < _story.comments) {
-            _cards[j] = _makeCard(res["text"] ?? "deleted", res["by"] ?? "?",
-                res['time'], top.left);
-            j++;
+        if (mounted) {
+          setState(() {
+            if (widget.counter < _story.comments) {
+              widget.cards[widget.counter] = _makeCard(res["text"] ?? "deleted",
+                  res["by"] ?? "?", res['time'], top.left);
+              widget.counter++;
+            }
+          });
+        } else {
+          if (widget.counter < _story.comments) {
+            widget.cards[widget.counter] = _makeCard(res["text"] ?? "deleted",
+                res["by"] ?? "?", res['time'], top.left);
+            widget.counter++;
           }
-        });
+        }
         if (res['kids'] != null) {
           top.children = new List(res["kids"].length);
           for (int i = 0; i < res["kids"].length; i++) {
@@ -94,23 +105,23 @@ class CommentPageState extends State<CommentPage> {
         length: 2,
         child: Scaffold(
           appBar: AppBar(
-            title: Text("${_story.headline}"),
+            title: Text(_story.headline),
             backgroundColor: Color(0xffff6600),
             bottom: TabBar(tabs: [
-              Tab(text: "Website"),
               Tab(text: "Comments"),
+              Tab(text: "Website"),
             ]),
           ),
           body: Center(
               child: TabBarView(children: [
-            WebViewScreen(_story.url),
             Container(
                 decoration: BoxDecoration(color: Colors.grey[200]),
                 child: ListView.builder(
                     itemBuilder: (context, index) {
-                      return _cards[index];
+                      return widget.cards[index];
                     },
-                    itemCount: _cards.length)),
+                    itemCount: widget.cards.length)),
+            WebViewScreen(_story.url),
           ])),
         ));
   }
