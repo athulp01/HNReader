@@ -33,7 +33,7 @@ class HNCard extends StatelessWidget {
             color: Colors.white,
             child: InkWell(
                 onTap: () {
-                  if (story.type == "job")
+                  if (story.type == "job" || story.comments == 0)
                     page = Scaffold(
                         appBar: AppBar(
                             title: Text(
