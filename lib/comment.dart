@@ -12,23 +12,37 @@ class HNComment {
   int id;
   double left;
   Future<Map<String, dynamic>> future;
-  Widget card;
   List<HNComment> children;
 }
 
-class CommentPage extends StatelessWidget {
-  final HNStory story;
-  List<Widget> cards;
-  StreamController<Widget> _controller = StreamController<Widget>.broadcast();
+class CommentPage extends StatefulWidget {
+  final HNStory _story;
 
-  CommentPage(this.story) {
-    cards = new List();
+  CommentPage(this._story);
+
+  CommentPageState createState() => CommentPageState(_story);
+}
+
+class CommentPageState extends State<CommentPage> {
+  final HNStory _story;
+  List<Widget> _cards;
+
+  CommentPageState(this._story) {
+    _cards = new List(_story.comments);
     getComments();
   }
 
-  Widget makeCard(String text, String by, int time, double left) {
+  void initState() {
+    super.initState();
+    var loading = _makeCard("...", "...", 0, 0);
+    for (int i = 0; i < _story.comments; i++) {
+      _cards[i] = loading;
+    }
+  }
+
+  Widget _makeCard(String text, String by, int time, double left) {
     var before = DateTime.now()
-        .difference(DateTime.fromMillisecondsSinceEpoch(story.time * 1000));
+        .difference(DateTime.fromMillisecondsSinceEpoch(time * 1000));
     String timeString = "${before.inHours} hours";
     if (before.inHours < 1) {
       timeString = "${before.inMinutes} minutes";
@@ -46,7 +60,8 @@ class CommentPage extends StatelessWidget {
   }
 
   void getComments() async {
-    for (var comment in story.children) {
+    int j = 0;
+    for (var comment in _story.children) {
       comment.future = HNAPI.fetchItem(comment.id);
       ListQueue<HNComment> stack = new ListQueue();
       stack.addLast(comment);
@@ -54,8 +69,13 @@ class CommentPage extends StatelessWidget {
         HNComment top = stack.last;
         stack.removeLast();
         var res = await top.future;
-        _controller.add(makeCard(
-            res["text"] ?? "deleted", res["by"] ?? "?", res['time'], top.left));
+        setState(() {
+          if (j < _story.comments) {
+            _cards[j] = _makeCard(res["text"] ?? "deleted", res["by"] ?? "?",
+                res['time'], top.left);
+            j++;
+          }
+        });
         if (res['kids'] != null) {
           top.children = new List(res["kids"].length);
           for (int i = 0; i < res["kids"].length; i++) {
@@ -74,7 +94,7 @@ class CommentPage extends StatelessWidget {
         length: 2,
         child: Scaffold(
           appBar: AppBar(
-            title: Text("${story.headline}"),
+            title: Text("${_story.headline}"),
             backgroundColor: Color(0xffff6600),
             bottom: TabBar(tabs: [
               Tab(text: "Website"),
@@ -83,30 +103,14 @@ class CommentPage extends StatelessWidget {
           ),
           body: Center(
               child: TabBarView(children: [
+            WebViewScreen(_story.url),
             Container(
                 decoration: BoxDecoration(color: Colors.grey[200]),
-                child: StreamBuilder(
-                    stream: _controller.stream,
-                    builder: (context, snapshot) {
-                      if (snapshot.hasData) {
-                        cards.add(snapshot.data);
-                        return ListView.builder(
-                            itemBuilder: (context, index) {
-                              return cards[index];
-                            },
-                            itemCount: cards.length);
-                      } else if (snapshot.connectionState ==
-                              ConnectionState.done ||
-                          snapshot.connectionState == ConnectionState.waiting) {
-                        return ListView.builder(
-                            itemBuilder: (context, index) {
-                              return cards[index];
-                            },
-                            itemCount: cards.length);
-                      }
-                      return Text("...");
-                    })),
-            WebViewScreen(story.url),
+                child: ListView.builder(
+                    itemBuilder: (context, index) {
+                      return _cards[index];
+                    },
+                    itemCount: _cards.length)),
           ])),
         ));
   }
