@@ -12,3 +12,8 @@ Home Page                  |  Comments
 ![](screenshots/home.jpeg) |  ![](screenshots/comments.jpeg)
 Website
 ![](screenshots/website.jpeg)
+
+# TODO
+1. Pull to refresh
+2. Submit and vote functionality
+   
